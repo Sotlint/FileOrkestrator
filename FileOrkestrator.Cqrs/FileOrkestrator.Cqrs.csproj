@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="MediatR" Version="12.4.1" />
+      <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.4" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <InternalsVisibleTo Include="FileOrkestrator.Cqrs.Tests" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\FileOrkestrator.Abstractions\FileOrkestrator.Abstractions.csproj" />
+      <ProjectReference Include="..\FileOrkestrator.Dal\FileOrkestrator.Dal.csproj" />
+      <ProjectReference Include="..\FileOrkestrator.Domain\FileOrkestrator.Domain.csproj" />
+      <ProjectReference Include="..\FileOrkestrator.Dto\FileOrkestrator.Dto.csproj" />
+      <ProjectReference Include="..\FileOrkestrator.Integrate.SearchEngine\FileOrkestrator.Integrate.SearchEngine.csproj" />
+    </ItemGroup>
+
+</Project>

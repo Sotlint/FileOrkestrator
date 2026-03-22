@@ -1,0 +1,266 @@
+openapi: 3.0.3
+info:
+  title: External Search Engine API
+  description: >
+    Контракт внешнего сервиса поиска: постановка задач индексации, статус, поиск.
+    Реализация чтения файлов и индексации — на стороне Search Engine.
+  version: 1.0.0
+
+servers:
+  - url: https://search-engine.example.com
+
+paths:
+  /api/v1/index/jobs:
+    post:
+      operationId: startIndexJob
+      tags: [Index]
+      summary: Поставить задачу индексации источника или набора путей
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartIndexJobRequest'
+      responses:
+        # В спецификации 200 с телом — чтобы Refitter сгенерировал Task<StartIndexJobResponse>.
+        # Реальный сервис может отвечать 202 Accepted с тем же телом.
+        '200':
+          description: Задача принята к обработке
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StartIndexJobResponse'
+        '400':
+          description: Некорректный запрос
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Конфликт (например дублирующаяся идемпотентная операция)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/index/jobs/{jobId}:
+    parameters:
+      - $ref: '#/components/parameters/JobId'
+    get:
+      operationId: getIndexJob
+      tags: [Index]
+      summary: Получить статус задачи индексации
+      responses:
+        '200':
+          description: Текущий статус
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IndexJobStatus'
+        '404':
+          description: Задача не найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      operationId: cancelIndexJob
+      tags: [Index]
+      summary: Запросить отмену задачи индексации
+      responses:
+        '204':
+          description: Отмена принята или задача уже завершена
+        '404':
+          description: Задача не найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/search:
+    get:
+      operationId: search
+      tags: [Search]
+      summary: Поиск по индексу
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Поисковая строка
+          schema:
+            type: string
+        - name: skip
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 0
+            default: 0
+        - name: take
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 500
+            default: 20
+      responses:
+        '200':
+          description: Результаты поиска
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+        '400':
+          description: Некорректные параметры
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  parameters:
+    JobId:
+      name: jobId
+      in: path
+      required: true
+      description: Идентификатор задачи на стороне Search Engine
+      schema:
+        type: string
+        minLength: 1
+
+  schemas:
+    StartIndexJobRequest:
+      type: object
+      required:
+        - sourceId
+      properties:
+        sourceId:
+          type: string
+          format: uuid
+          description: Логический источник данных (каталог, share, bucket и т.д.)
+        filePaths:
+          type: array
+          description: Опционально — конкретные пути; если пусто — полная переиндексация источника
+          items:
+            type: string
+        idempotencyKey:
+          type: string
+          description: Ключ идемпотентности для повторных POST с тем же смыслом
+        correlationId:
+          type: string
+          description: Идентификатор для сквозной трассировки (логи/метрики)
+
+    StartIndexJobResponse:
+      type: object
+      required:
+        - jobId
+        - acceptedAt
+      properties:
+        jobId:
+          type: string
+          description: Идентификатор задачи у Search Engine
+        acceptedAt:
+          type: string
+          format: date-time
+        isDuplicate:
+          type: boolean
+          description: true если запрос с тем же idempotencyKey уже обрабатывался
+
+    IndexJobStatus:
+      type: object
+      required:
+        - jobId
+        - status
+      properties:
+        jobId:
+          type: string
+        status:
+          $ref: '#/components/schemas/IndexJobState'
+        progress:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: Доля выполнения, если известна
+        indexedCount:
+          type: integer
+          format: int32
+          minimum: 0
+        failedCount:
+          type: integer
+          format: int32
+          minimum: 0
+        errorMessage:
+          type: string
+          nullable: true
+        startedAt:
+          type: string
+          format: date-time
+          nullable: true
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        partialSuccess:
+          type: boolean
+          description: true если завершено с ошибками по части документов
+
+    IndexJobState:
+      type: string
+      enum:
+        - Pending
+        - Running
+        - Succeeded
+        - Failed
+        - Cancelled
+        - PartialSuccess
+
+    SearchResponse:
+      type: object
+      required:
+        - items
+        - totalCount
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchHit'
+        totalCount:
+          type: integer
+          format: int64
+          minimum: 0
+
+    SearchHit:
+      type: object
+      required:
+        - documentId
+      properties:
+        documentId:
+          type: string
+        title:
+          type: string
+          nullable: true
+        snippet:
+          type: string
+          nullable: true
+        score:
+          type: number
+          format: double
+          nullable: true
+        sourcePath:
+          type: string
+          nullable: true
+
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        detail:
+          type: string
+          nullable: true

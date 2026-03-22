@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <RootNamespace>FileOrkestrator.Integrate.SearchEngine</RootNamespace>
+        <!-- Отключаем телеметрию Refitter при сборке -->
+        <RefitterNoLogging>true</RefitterNoLogging>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.0" />
+        <PackageReference Include="Refit" Version="8.0.0" />
+        <PackageReference Include="Refit.HttpClientFactory" Version="8.0.0" />
+        <PackageReference Include="Refitter.MSBuild" Version="1.7.3">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+    </ItemGroup>
+
+    <!-- Сгенерированные файлы подключает RefitterGenerate; исключаем из обычного glob SDK -->
+    <ItemGroup>
+        <Compile Remove="Generated\**\*.cs" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="Api\search-engine.openapi.yaml" />
+    </ItemGroup>
+
+</Project>

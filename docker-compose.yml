@@ -1,0 +1,51 @@
+# FileOrkestrator: API + PostgreSQL. Конфигурация соответствует текущим appsettings (секреты при необходимости вынесите в .env).
+name: fileorkestrator
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: file_orkestrator
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d file_orkestrator"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  host:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Общие
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      AllowedHosts: "*"
+      # Строка подключения к контейнеру postgres (Host=postgres)
+      ConnectionStrings__PostgreSQL: "Host=postgres;Port=5432;Database=file_orkestrator;Username=postgres;Password=admin"
+      # ApiAuthentication
+      ApiAuthentication__ApiKey: "01445ccc-521d-4f72-8cb9-0dbbf92a8c59"
+      ApiAuthentication__HeaderName: "X-API-Key"
+      # SearchEngine
+      SearchEngine__BaseUrl: "https://localhost:5001"
+      SearchEngine__RequestTimeout: "00:01:00"
+      SearchEngine__ApiKey: "01445ccc-521d-4f72-8cb9-0dbbf92a8c59"
+      SearchEngine__IsTest: "true"
+      # Logging
+      Logging__LogLevel__Default: "Debug"
+      Logging__LogLevel__Microsoft.AspNetCore: "Information"
+      Logging__LogLevel__Microsoft.EntityFrameworkCore.Database.Command: "Information"
+
+volumes:
+  postgres_data:

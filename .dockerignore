@@ -1,0 +1,10 @@
+README.md
+LICENSE
+build
+obj
+out
+dist
+.git
+.DS_Store
+.env
+Logs
